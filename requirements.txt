@@ -13,11 +13,6 @@ static3==0.7.0
 whitenoise==6.2.0
 openpyxl
 fitz
-tempfile
-json
-threading
-mimetypes
-zipfile
 pytesseract
 numpy
 pandas
