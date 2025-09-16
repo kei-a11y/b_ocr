@@ -16,3 +16,4 @@ fitz
 pytesseract
 numpy
 pandas
+frontend
