@@ -18,4 +18,4 @@ numpy
 pandas
 frontend
 tools
-cv2
+opencv-python
