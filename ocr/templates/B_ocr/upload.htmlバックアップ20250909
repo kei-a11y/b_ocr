@@ -1,0 +1,215 @@
+<!-- B_ocr/templates/B_ocr/upload.html -->
+{% extends 'B_ocr/base.html' %}
+{% load static %}
+
+{% block title %}PDFアップロード - PDF→Excel変換サービス{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="bi bi-file-earmark-pdf"></i> PDFファイル変換</h4>
+            </div>
+            <div class="card-body">
+                {% if not conversion_complete %}
+                    <!-- アップロード・変換フォーム -->
+                    <div class="upload-section">
+                        <div class="text-center mb-4">
+                            <div class="upload-icon">
+                                <i class="bi bi-cloud-upload" style="font-size: 3rem; color: #6c757d;"></i>
+                            </div>
+                            <h5 class="mt-3">PDFを選択して変換</h5>
+                            <p class="text-muted">決まった様式のPDFファイルを選択すると自動で変換が開始されます</p>
+                        </div>
+
+                        <!-- 通常のアップロード・変換フォーム -->
+                        <form method="post" enctype="multipart/form-data" id="uploadForm">
+                            {% csrf_token %}
+                            <div class="mb-3">
+                                <div class="file-upload-wrapper">
+                                    <input type="file" class="form-control" id="id_pdf_file" name="pdf_file" accept=".pdf" required>
+                                    <label for="id_pdf_file" class="file-label">
+                                        <i class="bi bi-file-earmark-pdf"></i> PDFファイルを選択して変換開始
+                                    </label>
+                                </div>
+                                {% if form.pdf_file.errors %}
+                                    <div class="text-danger mt-2">
+                                        {% for error in form.pdf_file.errors %}
+                                            <small>{{ error }}</small>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <!-- 処理中表示用 -->
+                            <div id="processingStatus" class="text-center" style="display: none;">
+                                <div class="mb-3">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">変換中...</span>
+                                    </div>
+                                </div>
+                                <h6>変換処理中です...</h6>
+                                <p class="text-muted">しばらくお待ちください</p>
+                            </div>
+
+                            <div class="d-grid" id="submitButtonArea">
+                                <button type="submit" class="btn btn-primary btn-lg" id="submitBtn" style="display: none;">
+                                    <i class="bi bi-arrow-repeat"></i> 変換実行
+                                </button>
+                            </div>
+                        </form>
+
+                        <!-- 手動操作用のボタン（JavaScriptが無効な場合のフォールバック） -->
+                        <noscript>
+                            <div class="alert alert-warning mt-3">
+                                <small>JavaScriptが無効です。ファイルを選択後、変換ボタンを押してください。</small>
+                            </div>
+                        </noscript>
+                    </div>
+
+                {% else %}
+                    <!-- 変換完了 -->
+                    <div class="success-section text-center">
+                        <div class="alert alert-success">
+                            <i class="bi bi-check-circle"></i> 変換が完了しました！
+                        </div>
+                        
+                        <div class="mb-4">
+                            <i class="bi bi-download" style="font-size: 3rem; color: #28a745;"></i>
+                            <h5 class="mt-3">Excelファイル（ZIP形式）をダウンロード</h5>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-2">
+                                {% if excel_filename %}
+                                <a href="{% url 'B_ocr:download' excel_filename %}" class="btn btn-success btn-lg w-100">
+                                    <i class="bi bi-download"></i> ZIPをダウンロード
+                                </a>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 mb-2">
+                                <a href="{% url 'B_ocr:upload' %}" class="btn btn-primary btn-lg w-100">
+                                    <i class="bi bi-plus-circle"></i> 新しいファイル
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- 注意事項 -->
+        <div class="alert alert-warning mt-4">
+            <h6><i class="bi bi-exclamation-triangle"></i> 重要な注意事項</h6>
+            <ul class="mb-0">
+                <li>決まった様式でなければ正確に読み取りできません</li>
+                <li>ファイルサイズは10MB以下にしてください</li>
+                <li>処理には数分かかる場合があります</li>
+            </ul>
+        </div>
+
+        <div class="text-center mt-3">
+            <a href="{% url 'B_ocr:format_info' %}" class="btn btn-outline-primary">
+                <i class="bi bi-info-circle"></i> 読み取るにはこちらの様式を使用する必要があります
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const fileInput = document.getElementById('id_pdf_file');
+    const form = document.getElementById('uploadForm');
+    const processingStatus = document.getElementById('processingStatus');
+    const submitBtn = document.getElementById('submitBtn');
+    const uploadSection = document.querySelector('.upload-section .text-center');
+
+    // ファイル選択時の処理
+    fileInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            // ファイルサイズチェック (10MB = 10 * 1024 * 1024 bytes)
+            if (file.size > 10 * 1024 * 1024) {
+                alert('ファイルサイズは10MB以下にしてください。');
+                fileInput.value = '';
+                return;
+            }
+
+            // PDFファイルかチェック
+            if (file.type !== 'application/pdf') {
+                alert('PDFファイルを選択してください。');
+                fileInput.value = '';
+                return;
+            }
+
+            // 確認ダイアログ
+            if (confirm(`「${file.name}」を変換しますか？\n処理には数分かかる場合があります。`)) {
+                // 処理中表示に切り替え
+                uploadSection.style.display = 'none';
+                processingStatus.style.display = 'block';
+                
+                // フォーム送信
+                form.submit();
+            } else {
+                // キャンセルされた場合はファイル選択をリセット
+                fileInput.value = '';
+            }
+        }
+    });
+
+    // フォーム送信前の処理
+    form.addEventListener('submit', function(e) {
+        // ファイルが選択されていない場合の手動送信を防ぐ
+        if (!fileInput.files[0]) {
+            e.preventDefault();
+            alert('PDFファイルを選択してください。');
+        }
+    });
+});
+</script>
+
+<style>
+.file-upload-wrapper {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+}
+
+.file-upload-wrapper input[type=file] {
+    position: absolute;
+    left: -9999px;
+    opacity: 0;
+}
+
+.file-label {
+    display: block;
+    padding: 12px 24px;
+    cursor: pointer;
+    border: 2px dashed #dee2e6;
+    border-radius: 8px;
+    text-align: center;
+    transition: all 0.3s ease;
+    background-color: #f8f9fa;
+}
+
+.file-label:hover {
+    border-color: #007bff;
+    background-color: #e3f2fd;
+}
+
+.file-upload-wrapper input[type=file]:focus + .file-label {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+}
+
+#processingStatus {
+    padding: 2rem 0;
+}
+
+.spinner-border {
+    width: 3rem;
+    height: 3rem;
+}
+</style>
+{% endblock %}

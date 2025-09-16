@@ -1,0 +1,371 @@
+<!-- B_ocr/templates/B_ocr/upload.html -->
+{% extends 'B_ocr/base.html' %}
+{% load static %}
+
+{% block title %}PDFアップロード - PDF→Excel変換サービス{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="bi bi-file-earmark-pdf"></i> PDFファイル変換</h4>
+            </div>
+            <div class="card-body">
+                {% if show_progress %}
+                    <!-- プログレスバー表示 -->
+                    <div class="progress-section">
+                        <div class="text-center mb-4">
+                            <div class="progress-icon">
+                                <i class="bi bi-gear" id="progressIcon" style="font-size: 3rem; color: #007bff; animation: spin 2s linear infinite;"></i>
+                            </div>
+                            <h5 class="mt-3">PDFを変換しています...</h5>
+                            <p class="text-muted" id="statusMessage">処理を開始しています...</p>
+                        </div>
+
+                        <!-- プログレスバー -->
+                        <div class="progress mb-3" style="height: 25px;">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                 role="progressbar" 
+                                 id="progressBar"
+                                 style="width: 0%;" 
+                                 aria-valuenow="0" 
+                                 aria-valuemin="0" 
+                                 aria-valuemax="100">
+                                <span id="progressText">0%</span>
+                            </div>
+                        </div>
+
+                        <!-- デバッグ情報表示 -->
+                        <div class="alert alert-info" id="debugInfo">
+                            <small>タスクID: <span id="debugTaskId">{{ task_id }}</span></small><br>
+                            <small>APIレスポンス: <span id="debugResponse">-</span></small>
+                        </div>
+
+                        <!-- 完了後のボタン表示エリア -->
+                        <div id="completionArea" style="display: none;">
+                            <div class="alert alert-success text-center">
+                                <i class="bi bi-check-circle"></i> 変換が完了しました！
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-2">
+                                    <a href="#" id="downloadLink" class="btn btn-success btn-lg w-100">
+                                        <i class="bi bi-download"></i> ZIPをダウンロード
+                                    </a>
+                                </div>
+                                <div class="col-md-6 mb-2">
+                                    <a href="{% url 'B_ocr:upload' %}" class="btn btn-primary btn-lg w-100">
+                                        <i class="bi bi-plus-circle"></i> 新しいファイル
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- エラー表示エリア -->
+                        <div id="errorArea" class="alert alert-danger" style="display: none;">
+                            <h6><i class="bi bi-exclamation-triangle"></i> エラーが発生しました</h6>
+                            <p id="errorMessage"></p>
+                            <div class="text-center mt-3">
+                                <a href="{% url 'B_ocr:upload' %}" class="btn btn-primary">
+                                    <i class="bi bi-arrow-left"></i> 最初に戻る
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- プログレス監視用のJavaScript -->
+                    <script>
+                    let taskId = '{{ task_id }}';
+                    let progressInterval;
+                    let fetchAttempts = 0;
+                    const maxAttempts = 10;
+
+                    function updateProgress() {
+                        fetchAttempts++;
+                        console.log(`Progress check attempt ${fetchAttempts} for task: ${taskId}`);
+                        
+                        // 複数のURL形式を試行
+                        let progressUrl;
+                        if (window.location.pathname.includes('/B_ocr/')) {
+                            progressUrl = `/B_ocr/progress/${taskId}/`;
+                        } else {
+                            progressUrl = `{% url 'B_ocr:get_progress' 'PLACEHOLDER' %}`.replace('PLACEHOLDER', taskId);
+                        }
+                        
+                        console.log(`Fetching from: ${progressUrl}`);
+                        document.getElementById('debugResponse').textContent = `試行 ${fetchAttempts}: ${progressUrl}`;
+                        
+                        fetch(progressUrl)
+                            .then(response => {
+                                console.log('Response status:', response.status);
+                                if (!response.ok) {
+                                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                                }
+                                return response.json();
+                            })
+                            .then(data => {
+                                console.log('Progress data received:', data);
+                                document.getElementById('debugResponse').textContent = 
+                                    `成功: ${data.progress}% - ${data.message}`;
+                                
+                                const progressBar = document.getElementById('progressBar');
+                                const progressText = document.getElementById('progressText');
+                                const statusMessage = document.getElementById('statusMessage');
+                                const completionArea = document.getElementById('completionArea');
+                                const errorArea = document.getElementById('errorArea');
+                                const progressIcon = document.getElementById('progressIcon');
+                                const debugInfo = document.getElementById('debugInfo');
+
+                                // プログレスバー更新
+                                progressBar.style.width = data.progress + '%';
+                                progressBar.setAttribute('aria-valuenow', data.progress);
+                                progressText.textContent = data.progress + '%';
+                                statusMessage.textContent = data.message;
+
+                                // 完了した場合
+                                if (data.completed) {
+                                    clearInterval(progressInterval);
+                                    debugInfo.style.display = 'none';
+                                    
+                                    if (data.status === 'completed' && data.result_file) {
+                                        // 成功時
+                                        progressIcon.className = 'bi bi-check-circle';
+                                        progressIcon.style.color = '#28a745';
+                                        progressIcon.style.animation = 'none';
+                                        
+                                        // ダウンロードリンクを設定
+                                        document.getElementById('downloadLink').href = 
+                                            `{% url 'B_ocr:download' 'PLACEHOLDER' %}`.replace('PLACEHOLDER', data.result_file);
+                                        
+                                        completionArea.style.display = 'block';
+                                        document.querySelector('.progress-section .text-center').style.display = 'none';
+                                        document.querySelector('.progress').style.display = 'none';
+                                        
+                                    } else if (data.error) {
+                                        // エラー時
+                                        progressIcon.className = 'bi bi-exclamation-triangle';
+                                        progressIcon.style.color = '#dc3545';
+                                        progressIcon.style.animation = 'none';
+                                        
+                                        document.getElementById('errorMessage').textContent = data.error;
+                                        errorArea.style.display = 'block';
+                                        document.querySelector('.progress-section .text-center').style.display = 'none';
+                                        document.querySelector('.progress').style.display = 'none';
+                                    }
+                                }
+                                
+                                fetchAttempts = 0; // 成功したらリセット
+                            })
+                            .catch(error => {
+                                console.error('プログレス取得エラー:', error);
+                                document.getElementById('debugResponse').textContent = 
+                                    `エラー ${fetchAttempts}: ${error.message}`;
+                                
+                                if (fetchAttempts >= maxAttempts) {
+                                    clearInterval(progressInterval);
+                                    
+                                    const progressIcon = document.getElementById('progressIcon');
+                                    progressIcon.className = 'bi bi-exclamation-triangle';
+                                    progressIcon.style.color = '#dc3545';
+                                    progressIcon.style.animation = 'none';
+                                    
+                                    document.getElementById('errorMessage').innerHTML = 
+                                        `プログレスの取得に失敗しました。<br>` +
+                                        `URL: ${progressUrl}<br>` +
+                                        `エラー: ${error.message}<br>` +
+                                        `ページを更新してください。`;
+                                    document.getElementById('errorArea').style.display = 'block';
+                                    document.querySelector('.progress-section .text-center').style.display = 'none';
+                                    document.querySelector('.progress').style.display = 'none';
+                                    document.getElementById('debugInfo').style.display = 'none';
+                                }
+                            });
+                    }
+
+                    // 1秒ごとにプログレスをチェック
+                    progressInterval = setInterval(updateProgress, 1000);
+                    
+                    // 初回実行
+                    updateProgress();
+                    </script>
+
+                {% elif conversion_complete %}
+                    <!-- 従来の変換完了表示（互換性のため残す） -->
+                    <div class="success-section text-center">
+                        <div class="alert alert-success">
+                            <i class="bi bi-check-circle"></i> 変換が完了しました！
+                        </div>
+                        
+                        <div class="mb-4">
+                            <i class="bi bi-download" style="font-size: 3rem; color: #28a745;"></i>
+                            <h5 class="mt-3">Excelファイル（ZIP形式）をダウンロード</h5>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-2">
+                                {% if excel_filename %}
+                                <a href="{% url 'B_ocr:download' excel_filename %}" class="btn btn-success btn-lg w-100">
+                                    <i class="bi bi-download"></i> ZIPをダウンロード
+                                </a>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6 mb-2">
+                                <a href="{% url 'B_ocr:upload' %}" class="btn btn-primary btn-lg w-100">
+                                    <i class="bi bi-plus-circle"></i> 新しいファイル
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                {% else %}
+                    <!-- アップロード・変換フォーム -->
+                    <div class="upload-section">
+                        <div class="text-center mb-4">
+                            <div class="upload-icon">
+                                <i class="bi bi-cloud-upload" style="font-size: 3rem; color: #6c757d;"></i>
+                            </div>
+                            <h5 class="mt-3">PDFを選択して変換</h5>
+                            <p class="text-muted">決まった様式のPDFファイルを選択すると自動で変換が開始されます</p>
+                        </div>
+
+                        <!-- 通常のアップロード・変換フォーム -->
+                        <form method="post" enctype="multipart/form-data" id="uploadForm">
+                            {% csrf_token %}
+                            <div class="mb-3">
+                                <div class="file-upload-wrapper">
+                                    <input type="file" class="form-control" id="id_pdf_file" name="pdf_file" accept=".pdf" required>
+                                    <label for="id_pdf_file" class="file-label">
+                                        <i class="bi bi-file-earmark-pdf"></i> PDFファイルを選択して変換開始
+                                    </label>
+                                </div>
+                                {% if form.pdf_file.errors %}
+                                    <div class="text-danger mt-2">
+                                        {% for error in form.pdf_file.errors %}
+                                            <small>{{ error }}</small>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <div class="d-grid" id="submitButtonArea">
+                                <button type="submit" class="btn btn-primary btn-lg" id="submitBtn" style="display: none;">
+                                    <i class="bi bi-arrow-repeat"></i> 変換実行
+                                </button>
+                            </div>
+                        </form>
+
+                        <noscript>
+                            <div class="alert alert-warning mt-3">
+                                <small>JavaScriptが無効です。ファイルを選択後、変換ボタンを押してください。</small>
+                            </div>
+                        </noscript>
+                    </div>
+
+                    <script>
+                    document.addEventListener('DOMContentLoaded', function() {
+                        const fileInput = document.getElementById('id_pdf_file');
+                        const form = document.getElementById('uploadForm');
+
+                        fileInput.addEventListener('change', function(e) {
+                            const file = e.target.files[0];
+                            if (file) {
+                                if (file.size > 10 * 1024 * 1024) {
+                                    alert('ファイルサイズは10MB以下にしてください。');
+                                    fileInput.value = '';
+                                    return;
+                                }
+
+                                if (file.type !== 'application/pdf') {
+                                    alert('PDFファイルを選択してください。');
+                                    fileInput.value = '';
+                                    return;
+                                }
+
+                                if (confirm(`「${file.name}」を変換しますか？\n処理には数分かかる場合があります。`)) {
+                                    form.submit();
+                                } else {
+                                    fileInput.value = '';
+                                }
+                            }
+                        });
+                    });
+                    </script>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- 注意事項 -->
+        <div class="alert alert-warning mt-4">
+            <h6><i class="bi bi-exclamation-triangle"></i> 重要な注意事項</h6>
+            <ul class="mb-0">
+                <li>決まった様式でなければ正確に読み取りできません</li>
+                <li>ファイルサイズは10MB以下にしてください</li>
+                <li>処理には数分かかる場合があります</li>
+            </ul>
+        </div>
+
+        <div class="text-center mt-3">
+            <a href="{% url 'B_ocr:format_info' %}" class="btn btn-outline-primary">
+                <i class="bi bi-info-circle"></i> 読み取るにはこちらの様式を使用する必要があります
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+.file-upload-wrapper {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+}
+
+.file-upload-wrapper input[type=file] {
+    position: absolute;
+    left: -9999px;
+    opacity: 0;
+}
+
+.file-label {
+    display: block;
+    padding: 12px 24px;
+    cursor: pointer;
+    border: 2px dashed #dee2e6;
+    border-radius: 8px;
+    text-align: center;
+    transition: all 0.3s ease;
+    background-color: #f8f9fa;
+}
+
+.file-label:hover {
+    border-color: #007bff;
+    background-color: #e3f2fd;
+}
+
+.file-upload-wrapper input[type=file]:focus + .file-label {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+}
+
+.progress-section {
+    padding: 2rem 0;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.progress-bar {
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#progressText {
+    color: white;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+}
+</style>
+{% endblock %}
