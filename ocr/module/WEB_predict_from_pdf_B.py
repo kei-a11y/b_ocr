@@ -7,7 +7,7 @@ from openpyxl import load_workbook
 from django.conf import settings
 
 
-pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+#pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
 # --- 外部ライブラリ読み込み（無ければ適宜メッセージ） ---
 try:
