@@ -17,3 +17,4 @@ pytesseract
 numpy
 pandas
 frontend
+tools
