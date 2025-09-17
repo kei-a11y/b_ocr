@@ -27,8 +27,7 @@ SECRET_KEY = os.environ.get('SECRET_KEY','django-insecure-oimspeb*x6k$6_oi*)gucp
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '.onrender.com']
-
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '.up.railway.app’] # Railway のサブドメイン全体を許可
 
 # Application definition
 
