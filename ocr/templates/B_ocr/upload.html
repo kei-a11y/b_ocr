@@ -5,6 +5,36 @@
 {% block title %}PDFアップロード - PDF→Excel変換サービス{% endblock %}
 
 {% block content %}
+<style>
+  .col-md-6-5 {
+    flex: 0 0 55.5%; /
+    max-width: 55.5%;
+  }
+</style>
+
+<!-- 寄付のお願いバナー -->
+<div class="row justify-content-center mb-2">
+    <div class="col-md-6-5" style="transform: scale(0.9);>
+        <div class="alert alert-warning border-warning shadow-sm" style="border-left: 5px solid #ff6b00;">
+        <div class="row align-items-center g-0">
+            <div class="col">
+                <p class="mb-1">このサイトはフリーサーバーで運営しているため機能が制限されています.</p>
+                <p class="mb-0">高機能サーバーへの移設のため、<strong>寄付をお願いしております</strong>.</p>
+            </div>
+            <div class="col-md-auto text-center">
+                <button type="button" class="btn btn-outline-warning btn-lg" id="showDonationBtn" 
+                    style="border-color: #ff6b00; color: #ff6b00;">
+                <i class="bi bi-heart-fill"></i> 寄付で応援する
+                </button>
+                    <div class="mt-0">
+                        <small class="text-muted">（ ⇑ PayPayで寄付）</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="row justify-content-center">
     <div class="col-md-8 col-lg-6">
         <div class="card shadow">
@@ -27,9 +57,10 @@
                         <div class="row">
                             <div class="col-md-6 mb-2">
                                 {% if excel_filename %}
-                                <a href="{% url 'B_ocr:download' excel_filename %}" class="btn btn-success btn-lg w-100">
+                                <button id="downloadBtn" class="btn btn-success btn-lg w-100" 
+                                        data-url="{% url 'B_ocr:download' excel_filename %}">
                                     <i class="bi bi-download"></i> ZIPをダウンロード
-                                </a>
+                                </button>
                                 {% else %}
                                 <div class="alert alert-warning">
                                     ダウンロードファイルが見つかりません
@@ -153,10 +184,170 @@
     </div>
 </div>
 
+<!-- 寄付モーダル（PayPay画像のみ版） -->
+<div class="modal fade" id="donationModal" tabindex="-1" aria-labelledby="donationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="donationModalLabel">
+                    <i class="bi bi-heart"></i> サービス継続のご支援をお願いします
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center py-2">
+                <div id="donationContent">
+                    <p class="mb-2" id="donationMessage">
+                        このサービスの維持・改善にご協力ください
+                    </p>
+                    
+                    <div class="mb-2">
+                        <div id="paypayQRContainer" style="display: none;">
+                            <p class="mb-1 text-muted small">PayPayアプリでQRコードを読み取ってください</p>
+                            <img id="paypayQRImage" src="" alt="PayPay QRコード" class="img-fluid" style="max-width: 220px; max-height: 220px;">
+                            <p class="mt-1 text-success"><strong>金額：300円</strong></p>
+                        </div>
+                    </div>
+                    
+                    <div class="text-muted small">
+                        <i class="bi bi-info-circle"></i> 
+                        寄付は任意です。お気持ちの範囲でお願いします。
+                    </div>
+                </div>
+                
+                <div id="noDonationContent" style="display: none;">
+                    <p class="text-muted">現在、寄付の受付を行っておりません。</p>
+                </div>
+            </div>
+            <div class="modal-footer justify-content-center">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle"></i> 今は寄付しない
+                </button>
+                <button type="button" class="btn btn-success" data-bs-dismiss="modal" id="thankYouBtn">
+                    <i class="bi bi-check-circle"></i> 応援してます
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
+// 寄付モーダル表示関数（シンプル版）
+function showDonationModal(donationData, downloadUrl) {
+    const modal = new bootstrap.Modal(document.getElementById('donationModal'));
+    const messageElement = document.getElementById('donationMessage');
+    const donationContent = document.getElementById('donationContent');
+    const noDonationContent = document.getElementById('noDonationContent');
+    const paypayQRContainer = document.getElementById('paypayQRContainer');
+    const paypayQRImage = document.getElementById('paypayQRImage');
+
+    // 要素の存在チェック
+    if (!messageElement || !donationContent || !noDonationContent || 
+        !paypayQRContainer || !paypayQRImage) {
+        console.error('必要なDOM要素が見つかりません');
+        // エラーの場合、ダウンロードURLがあれば直接ダウンロード
+        if (downloadUrl) {
+            window.location.href = downloadUrl;
+        }
+        return;
+    }
+
+    if (donationData.has_donation) {
+        donationContent.style.display = 'block';
+        noDonationContent.style.display = 'none';
+        
+        // メッセージ設定
+        messageElement.textContent = donationData.message || 'このサービスの維持・改善にご協力ください';
+        
+        // PayPay画像を表示
+        if (donationData.paypay_image_url) {
+            paypayQRImage.src = donationData.paypay_image_url;
+            paypayQRContainer.style.display = 'block';
+            console.log('PayPay画像を表示:', donationData.paypay_image_url);
+        } else {
+            // 画像がない場合は非表示
+            paypayQRContainer.style.display = 'none';
+            console.log('PayPay画像が設定されていません');
+        }
+    } else {
+        donationContent.style.display = 'none';
+        noDonationContent.style.display = 'block';
+    }
+    
+    // モーダル閉じた後のダウンロード処理
+    if (downloadUrl) {
+        const modalElement = document.getElementById('donationModal');
+        modalElement.addEventListener('hidden.bs.modal', function() {
+            window.location.href = downloadUrl;
+        }, { once: true });
+    }
+    
+    modal.show();
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const fileInput = document.getElementById('id_pdf_file');
     const form = document.getElementById('uploadForm');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const showDonationBtn = document.getElementById('showDonationBtn');
+
+    // 寄付ボタンのクリック処理
+    if (showDonationBtn) {
+        showDonationBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            fetch('{% url "B_ocr:donation_info" %}')
+                .then(response => {
+                    console.log('API応答ステータス:', response.status);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('取得したデータ:', data);
+                    if (data.has_donation) {
+                        showDonationModal(data, null);
+                    } else {
+                        alert('現在、寄付の受付を準備中です。しばらくお待ちください。');
+                    }
+                })
+                .catch(error => {
+                    console.error('寄付情報の取得に失敗:', error);
+                    alert('寄付情報の取得に失敗しました。ページを更新してもう一度お試しください。');
+                });
+        });
+    }
+
+    // ダウンロードボタンの処理
+    if (downloadBtn) {
+        downloadBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const downloadUrl = this.dataset.url;
+            
+            fetch('{% url "B_ocr:donation_info" %}')
+                .then(response => {
+                    console.log('API応答ステータス:', response.status);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('取得したデータ:', data);
+                    if (data.has_donation) {
+                        showDonationModal(data, downloadUrl);
+                    } else {
+                        // 寄付設定がない場合は直接ダウンロード
+                        window.location.href = downloadUrl;
+                    }
+                })
+                .catch(error => {
+                    console.error('寄付情報の取得に失敗:', error);
+                    // エラー時も直接ダウンロード
+                    window.location.href = downloadUrl;
+                });
+        });
+    }
 
     // 処理中の場合は進捗監視を開始
     {% if processing and session_id %}
@@ -209,13 +400,13 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function startProgressMonitoring(sessionId) {
+    // 進捗監視の関数は既存のものをそのまま使用
     const currentPageElement = document.getElementById('currentPage');
     const totalPagesElement = document.getElementById('totalPages');
     const statusMessageElement = document.getElementById('statusMessage');
     const completedSection = document.getElementById('completedSection');
     const errorSection = document.getElementById('errorSection');
     const errorMessage = document.getElementById('errorMessage');
-    const processingSection = document.querySelector('.processing-section');
 
     let retryCount = 0;
     const maxRetries = 5;
@@ -223,7 +414,7 @@ function startProgressMonitoring(sessionId) {
     function updateProgress() {
         console.log(`進捗チェック中... セッションID: ${sessionId}`);
         
-        fetch(`/progress/${sessionId}/`)
+        fetch(`{% url 'B_ocr:get_progress' session_id='dummy' %}`.replace('dummy', sessionId))
             .then(response => {
                 console.log('API応答ステータス:', response.status);
                 if (!response.ok) {
@@ -233,7 +424,7 @@ function startProgressMonitoring(sessionId) {
             })
             .then(data => {
                 console.log('進捗データ:', data);
-                retryCount = 0; // 成功したらリトライカウントをリセット
+                retryCount = 0;
 
                 // 進捗更新
                 if (currentPageElement) currentPageElement.textContent = Math.floor(data.current) || 0;
@@ -364,5 +555,63 @@ function startProgressMonitoring(sessionId) {
     padding: 2rem 0;
 }
 
+/* 寄付バナー用のスタイル */
+.alert-warning {
+    background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+    border-left: 5px solid #ff6b00 !important;
+}
+
+.btn-outline-warning:hover {
+    background-color: #ff6b00;
+    border-color: #ff6b00;
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(255, 107, 0, 0.3);
+}
+
+.btn-outline-warning {
+    transition: all 0.3s ease;
+}
+
+/* 寄付モーダル用のスタイル */
+.modal-body {
+    padding: 2rem;
+}
+
+#donationModal .modal-header {
+    background: linear-gradient(135deg, #28a745, #20c997);
+}
+
+#paypayQRImage {
+    border: 3px solid #e9ecef;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+#paypayTextCode {
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    font-family: monospace;
+}
+
+.modal-footer {
+    border-top: none;
+    padding: 1rem 2rem 2rem 2rem;
+}
+
+.modal-footer .btn {
+    min-width: 120px;
+}
+
+/* PayPayカラーに合わせたボタンスタイル */
+.btn-success {
+    background-color: #ff6b00;
+    border-color: #ff6b00;
+}
+
+.btn-success:hover {
+    background-color: #e55a00;
+    border-color: #e55a00;
+}
 </style>
 {% endblock %}
