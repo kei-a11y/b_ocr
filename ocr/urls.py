@@ -12,5 +12,11 @@ urlpatterns = [
     path('download/<str:filename>/', views.download_file, name='download'),
     path('download-template/<str:file_type>/', views.download_template, name='download_template'),
     # 進捗取得API
+    path('donation-info/', views.get_donation_info, name='donation_info'),
     path('progress/<str:session_id>/', views.get_progress, name='get_progress'),
 ]
+
+
+# urlpatterns の最後に追加
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
