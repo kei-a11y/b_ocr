@@ -259,8 +259,10 @@ function showDonationModal(donationData, downloadUrl) {
         messageElement.textContent = donationData.message || 'このサービスの維持・改善にご協力ください';
         
         // PayPay画像を表示
+        // PayPay画像を表示
         if (donationData.paypay_image_url) {
-            paypayQRImage.src = donationData.paypay_image_url;
+            paypayQRImage.src = "{% static 'paypay0930.png' %}";
+            // renderでは一旦やめるpaypayQRImage.src = donationData.paypay_image_url;
             paypayQRContainer.style.display = 'block';
             console.log('PayPay画像を表示:', donationData.paypay_image_url);
         } else {
