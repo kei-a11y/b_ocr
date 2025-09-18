@@ -18,6 +18,7 @@ from datetime import datetime
 import fitz  # PyMuPDF
 
 from .forms import PDFUploadForm
+from .models import PayPayDonation
 from .module.WEB_predict_from_pdf_B import process_pdf_to_excel_with_progress
 
 # 進捗状況を保存するグローバル辞書
@@ -31,11 +32,15 @@ def upload_pdf(request):
     result_file = request.GET.get('file')
     
     if completed:
+        # 寄付設定を取得
+        donation = PayPayDonation.get_active_donation()
+        
         # 完了画面を表示
         return render(request, 'B_ocr/upload.html', {
             'form': PDFUploadForm(),
             'conversion_complete': True,
-            'excel_filename': result_file
+            'excel_filename': result_file,
+            'donation': donation
         })
     
     if request.method == 'POST':
@@ -151,6 +156,33 @@ def upload_pdf(request):
     return render(request, 'B_ocr/upload.html', {'form': form})
 
 
+@require_http_methods(["GET"])
+def get_donation_info(request):
+    """寄付情報を取得するAPI"""
+    donation = PayPayDonation.get_active_donation()
+    
+    if donation and not donation.is_expired():
+        # 画像URLを生成
+        if donation.paypay_image and donation.paypay_image.name:
+            try:
+                image_url = request.build_absolute_uri(donation.paypay_image.url)
+            except (ValueError, AttributeError):
+                image_url = None
+        else:
+            image_url = None
+            
+        return JsonResponse({
+            'has_donation': True,
+            'paypay_image_url': image_url,
+            'message': donation.message,
+            'expires_at': donation.expires_at.isoformat()
+        })
+    else:
+        return JsonResponse({
+            'has_donation': False
+        })
+
+
 def update_progress(session_id, current, total, message):
     """進捗更新用ヘルパー関数"""
     if session_id in progress_storage:
@@ -180,6 +212,7 @@ def get_progress(request, session_id):
             'status': 'not_found',
             'message': 'セッションが見つかりません'
         })
+
 
 def format_info(request):
     """様式情報ページ"""
