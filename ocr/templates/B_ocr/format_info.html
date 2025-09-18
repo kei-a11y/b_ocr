@@ -5,7 +5,7 @@
 
 {% block content %}
 <div class="row justify-content-center">
-    <div class="col-md-10">
+    <div class="col-md-7">
         <div class="card shadow">
             <div class="card-header bg-info text-white">
                 <h4 class="mb-0"><i class="bi bi-file-earmark-text"></i> 専用様式とダウンロード</h4>
@@ -16,8 +16,7 @@
                         <div class="mb-4">
                             <h5>読み取り専用様式</h5>
                             <p class="text-muted">
-                                PDFファイルを正確に読み取るには、以下の専用様式を使用してください。
-                                様式以外のフォーマットでは正常に処理できない場合があります。
+                                以下の専用様式以外のフォーマットでは正常に処理ができません。
                             </p>
                         </div>
 
@@ -36,12 +35,12 @@
                                 </div>
                             </div>
                             
-                            <div class="col-md-6 mb-3">
+                            <div class="col-md-6 mb-1">
                                 <div class="card h-100 border-success">
                                     <div class="card-body text-center">
                                         <i class="bi bi-file-earmark-excel text-success" style="font-size: 3rem;"></i>
                                         <h6 class="card-title mt-3">Excel版様式</h6>
-                                        <p class="card-text small">一定項目入力してから印刷して記入する 《ｵｽｽﾒ》</p>
+                                        <p class="card-text small">ある程度入力してから印刷して記入する《推奨》</p>
                                         <a href="{% url 'B_ocr:download_template' 'excel' %}" class="btn btn-success">
                                             <i class="bi bi-download"></i> Excelダウンロード
                                         </a>
@@ -51,14 +50,13 @@
                         </div>
 
                         <!-- 記載上の留意点 -->
-                        <div class="card border-warning mb-4">
+                        <div class="card border-warning mb-2">
                             <div class="card-body">
                                 <h6 class="card-title text-warning">
                                     <i class="bi bi-exclamation-triangle"></i> 記載上の留意点
                                 </h6>
                                 <p class="card-text">
-                                    様式への正しい記載方法について説明したドキュメントです。
-                                    正確な読み取りのために必ずご確認ください。
+                                    様式への正しい記載方法について、次の留意点の説明書きを必ずご確認ください。
                                 </p>
                                 <a href="{% url 'B_ocr:download_template' 'notes' %}" class="btn btn-warning" style="display: flex; justify-content: center;">
                                     <i class="bi bi-download"></i> 〘実績記録票を記載する上での留意点〙をダウンロード
@@ -71,7 +69,7 @@
                             <h6><i class="bi bi-lightbulb"></i> 使用方法</h6>
                             <ol class="mb-0">
                                 <li>上記の様式をダウンロードして記入してください</li>
-                                <li>記入後、PDFファイルとして保存してください</li>
+                                <li>記入後、PDFファイルとしてスキャンしてください</li>
                                 <li>アップロードページでPDFファイルを選択してください</li>
                                 <li>変換ボタンを押してExcelファイルを生成してください</li>
                             </ol>
