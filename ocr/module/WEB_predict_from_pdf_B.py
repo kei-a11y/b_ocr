@@ -319,7 +319,7 @@ def save_results_to_excel(rows, recipient_digits, name_digits, output_base="outp
 
     # === 新しいファイル名ルール ===
     recipient = (recipient_digits or "").strip()
-    filename = f"{recipient}{seq_no}ページ目.xlsx"
+    filename = f"{recipient}_{seq_no}ページ目.xlsx"
 
     if os.path.isdir(output_base) or output_base.endswith(('/', '\\')):
         output_path = os.path.join(output_base, filename)
