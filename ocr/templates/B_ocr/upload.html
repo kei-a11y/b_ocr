@@ -203,7 +203,7 @@
                     <div class="mb-2">
                         <div id="paypayQRContainer" style="display: none;">
                             <p class="mb-1 text-muted small">PayPayアプリでQRコードを読み取ってください</p>
-                            <img id="paypayQRImage" src="{% static 'paypay0930.png' %}" alt="PayPay QRコード" class="img-fluid" style="max-width: 220px; max-height: 220px;">
+                            <img id="paypayQRImage" src="{% static 'paypay.jpg' %}" alt="PayPay QRコード" class="img-fluid" style="max-width: 220px; max-height: 220px;">
                             <p class="mt-1 text-success"><strong>金額：300円</strong></p>
                         </div>
                     </div>
@@ -261,7 +261,7 @@ function showDonationModal(donationData, downloadUrl) {
         // PayPay画像を表示
         // PayPay画像を表示
         if (donationData.paypay_image_url) {
-            paypayQRImage.src = "{% static 'paypay0930.png' %}";
+            paypayQRImage.src = "{% static 'paypay.jpg' %}";
             // renderでは一旦やめるpaypayQRImage.src = donationData.paypay_image_url;
             paypayQRContainer.style.display = 'block';
             console.log('PayPay画像を表示:', donationData.paypay_image_url);
