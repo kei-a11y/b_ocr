@@ -297,7 +297,7 @@ def align_using_corner_marks(scanned_img, dpi, template_pdf_path):
 
 
 def save_results_to_excel(rows, recipient_digits, name_digits, output_base="output",
-                          template_xlsx_path=os.path.join(settings.BASE_DIR, "static_files", "documents", "template.xlsx"),
+                          template_xlsx_path=os.path.join(settings.BASE_DIR, "static_files", "documents", "output_template.xlsx"),
                           seq_no=1):
     """Excel保存 → ファイル名は {recipient}{seq_no}ページ目.xlsx に変更"""
     wb = load_workbook(template_xlsx_path)
@@ -796,7 +796,7 @@ def process_pdf_to_excel_with_progress(pdf_path, output_dir="downloads", progres
                 recipient_digits=recipient_digits,
                 name_digits=name_digits,
                 output_base=output_dir,
-                template_xlsx_path=os.path.join(settings.BASE_DIR, "static_files", "documents", "template.xlsx"),
+                template_xlsx_path=os.path.join(settings.BASE_DIR, "static_files", "documents", "output_template.xlsx"),
                 seq_no=seq_no
             )
             output_files.append(created_file)
